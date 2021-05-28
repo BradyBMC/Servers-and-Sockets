@@ -47,6 +47,28 @@ void reply_ls (accepted_socket& client_sock, cxi_header& header) {
 }
 
 void reply_get(accepted_socket& client_sock, cxi_header& header) {
+  ifstream ifs;
+  ifs.open(header.filename,ifstream::in);
+  if(ifs.fail()) {
+    outlog << header.filename << ": " << strerror (errno) << endl;
+    header.command = cxi_command::NAK;
+    header.nbytes = htonl(errno);
+    send_packet(client_sock, &header, sizeof header);
+    return;
+  }
+
+  string line;
+  string text;
+  while(getline(ifs,line)) {
+    text.append(line);
+  }
+
+  header.command = cxi_command::ACK;
+  header.nbytes = text.size();
+  memset (header.filename, 0, FILENAME_SIZE);
+  send_packet (client_sock, &header, sizeof header);
+ 
+  send_packet (client_sock, text.c_str(), text.size());
 }
 
 

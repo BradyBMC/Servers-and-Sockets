@@ -67,7 +67,7 @@ void cxi_get(client_socket& server,string filename) {
   send_packet(server, &header, sizeof header);
   recv_packet(server, &header, sizeof header);
   //Might not be ACK
-  if(header.command != cxi_command::ACK) {
+  if(header.command != cxi_command::GET) {
     outlog << "sent LS, server did not return LSOUT" << endl;
     outlog << "server returned " << header << endl;
   } else {
