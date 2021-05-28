@@ -118,9 +118,18 @@ int main (int argc, char** argv) {
          getline (cin, line);
          if (cin.eof()) throw cxi_exit();
          outlog << "command " << line << endl;
-         const auto& itor = command_map.find (line);
+
+         size_t found = line.find(" ");
+         string temp;
+         if(found != string::npos) {
+           temp = line.substr(0,found);
+         }
+         
+         //const auto& itor = command_map.find (line);
+         const auto& itor = command_map.find(temp);
          cxi_command cmd = itor == command_map.end()
                          ? cxi_command::ERROR : itor->second;
+         cout << "here"<< endl;
          string filename = "";
          if(cmd == cxi_command::GET) {
            size_t ind = line.find(" ");
