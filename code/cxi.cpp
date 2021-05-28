@@ -1,10 +1,12 @@
-// $Id: cxi.cpp,v 1.5 2021-05-18 01:32:29-07 - - $
+// $Id: cxi.cpp,v 1.8 2021-05-28 03:21:06-07 - - $
 
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <regex>
 using namespace std;
 
 #include <libgen.h>
@@ -15,6 +17,7 @@ using namespace std;
 #include "logstream.h"
 #include "protocol.h"
 #include "socket.h"
+#include "util.h"
 
 logstream outlog (cout);
 struct cxi_exit: public exception {};
@@ -23,6 +26,7 @@ unordered_map<string,cxi_command> command_map {
    {"exit", cxi_command::EXIT},
    {"help", cxi_command::HELP},
    {"ls"  , cxi_command::LS  },
+   {"get" , cxi_command::GET },
 };
 
 static const char help[] = R"||(
@@ -58,6 +62,27 @@ void cxi_ls (client_socket& server) {
    }
 }
 
+void cxi_get (client_socket& server, string file) {
+   cxi_header header;
+   header.command = cxi_command::GET;
+   header.filename = std::move(reinterpret_cast<void*>(file);
+   DEBUGF ('h', "sending header " << header <<endl);
+   send_packet (server, &header, sizeof header);
+   recv_packet (server, &header, sizeof header);
+   DEBUGF('h', "recieved header " << header << endl);
+   if (header.command != cxi_command::FILEOUT) {
+     outlog << "sent GET, server did not return FILEOUT" << endl;
+     outlog << "server returned " << header << endl;
+   }else {
+     size_t host_nbytes = ntohl (header.nbytes);
+     auto buffer = make_unique<char[]> (host_nbytes + 1);
+     recv_packet (server, buffer.get(), host_nbytes);
+     DEBUGF('h', "received " << host_nbytes << " bytes");
+     buffer[host_nbytes] = '\0';
+     cout << buffer.get();
+   }
+}
+
 
 void usage() {
    cerr << "Usage: " << outlog.execname() << " host port" << endl;
@@ -82,6 +107,7 @@ pair<string,in_port_t> scan_options (int argc, char** argv) {
 int main (int argc, char** argv) {
    outlog.execname (basename (argv[0]));
    outlog << to_string (hostinfo()) << endl;
+   vector<string> inpt{};
    try {
       auto host_port = scan_options (argc, argv);
       string host = host_port.first;
@@ -106,6 +132,14 @@ int main (int argc, char** argv) {
                break;
             case cxi_command::LS:
                cxi_ls (server);
+               break;
+            case cxi_command::GET:
+               inpt = split(line, " ");
+               if (inpt.size() > 2) {
+                 outlog << line << ": invalid file input" << endl;
+                 break;
+               }
+               cxi_get (server, inpt.at(1));
                break;
             default:
                outlog << line << ": invalid command" << endl;
