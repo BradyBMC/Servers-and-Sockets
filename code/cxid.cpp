@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <memory>
+#include <fstream>
 using namespace std;
 
 #include <libgen.h>
@@ -44,6 +46,9 @@ void reply_ls (accepted_socket& client_sock, cxi_header& header) {
    DEBUGF ('h', "sent " << ls_output.size() << " bytes");
 }
 
+void reply_get(accepted_socket& client_sock, cxi_header& header) {
+}
+
 
 void run_server (accepted_socket& client_sock) {
    outlog.execname (outlog.execname() + "*");
@@ -56,6 +61,9 @@ void run_server (accepted_socket& client_sock) {
          switch (header.command) {
             case cxi_command::LS: 
                reply_ls (client_sock, header);
+               break;
+            case cxi_command::GET:
+               reply_get (client_sock, header);
                break;
             default:
                outlog << "invalid client header:" << header << endl;

@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <fstream>
 using namespace std;
 
 #include <libgen.h>
@@ -23,6 +24,7 @@ unordered_map<string,cxi_command> command_map {
    {"exit", cxi_command::EXIT},
    {"help", cxi_command::HELP},
    {"ls"  , cxi_command::LS  },
+   {"get" , cxi_command::GET },
 };
 
 static const char help[] = R"||(
@@ -56,6 +58,28 @@ void cxi_ls (client_socket& server) {
       buffer[host_nbytes] = '\0';
       cout << buffer.get();
    }
+}
+
+void cxi_get(client_socket& server,string filename) {
+  cxi_header header;
+  header.command = cxi_command::GET;
+  strcpy(header.filename, filename.c_str());
+  send_packet(server, &header, sizeof header);
+  recv_packet(server, &header, sizeof header);
+  //Might not be ACK
+  if(header.command != cxi_command::ACK) {
+    outlog << "sent LS, server did not return LSOUT" << endl;
+    outlog << "server returned " << header << endl;
+  } else {
+    ofstream ofs;
+    ofs.open(header.filename, ofstream::out);
+    size_t host_nbytes = ntohl (header.nbytes);
+    auto buffer = make_unique<char[]> (host_nbytes + 1);
+    recv_packet (server, buffer.get(), host_nbytes);
+    buffer[host_nbytes] = '\0';
+    ofs.write(buffer.get(),header.nbytes);
+    ofs.close();
+  }
 }
 
 
@@ -97,6 +121,11 @@ int main (int argc, char** argv) {
          const auto& itor = command_map.find (line);
          cxi_command cmd = itor == command_map.end()
                          ? cxi_command::ERROR : itor->second;
+         string filename = "";
+         if(cmd == cxi_command::GET) {
+           size_t ind = line.find(" ");
+           filename = line.substr(ind, line.length());
+         }
          switch (cmd) {
             case cxi_command::EXIT:
                throw cxi_exit();
@@ -106,6 +135,9 @@ int main (int argc, char** argv) {
                break;
             case cxi_command::LS:
                cxi_ls (server);
+               break;
+            case cxi_command::GET:
+               cxi_get (server, filename);
                break;
             default:
                outlog << line << ": invalid command" << endl;
