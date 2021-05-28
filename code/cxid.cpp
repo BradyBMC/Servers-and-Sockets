@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <fstream>
+#include <sstream>
 using namespace std;
 
 #include <libgen.h>
@@ -57,18 +58,15 @@ void reply_get(accepted_socket& client_sock, cxi_header& header) {
     return;
   }
 
-  string line;
-  string text;
-  while(getline(ifs,line)) {
-    text.append(line);
-  }
+  ostringstream ss;
+  ss << ifs.rdbuf();
+  string get_output = ss.str();
 
   header.command = cxi_command::ACK;
-  header.nbytes = text.size();
+  header.nbytes = get_output.size();
   memset (header.filename, 0, FILENAME_SIZE);
   send_packet (client_sock, &header, sizeof header);
- 
-  send_packet (client_sock, text.c_str(), text.size());
+  send_packet (client_sock, get_output.c_str(), get_output.size());
 }
 
 
