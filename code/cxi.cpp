@@ -67,18 +67,19 @@ void cxi_get(client_socket& server,string filename) {
   send_packet(server, &header, sizeof header);
   recv_packet(server, &header, sizeof header);
   //Might not be ACK
-  if(header.command != cxi_command::GET) {
-    outlog << "sent LS, server did not return LSOUT" << endl;
+  if(header.command != cxi_command::ACK) {
+    outlog << "sent GET, server did not return ACK" << endl;
     outlog << "server returned " << header << endl;
   } else {
+    char *buffer = new char[header.nbytes+1];
+    recv_packet (server, buffer, header.nbytes);
+    buffer[header.nbytes] = '\0';
+
     ofstream ofs;
     ofs.open(header.filename, ofstream::out);
-    size_t host_nbytes = ntohl (header.nbytes);
-    auto buffer = make_unique<char[]> (host_nbytes + 1);
-    recv_packet (server, buffer.get(), host_nbytes);
-    buffer[host_nbytes] = '\0';
-    ofs.write(buffer.get(),header.nbytes);
+    ofs.write(buffer,header.nbytes);
     ofs.close();
+    delete buffer;
   }
 }
 
@@ -118,13 +119,23 @@ int main (int argc, char** argv) {
          getline (cin, line);
          if (cin.eof()) throw cxi_exit();
          outlog << "command " << line << endl;
-         const auto& itor = command_map.find (line);
+
+         size_t found = line.find(" ");
+         string temp;
+         if(found != string::npos) {
+           temp = line.substr(0,found);
+         } else {
+           temp = line;
+         }
+         
+         //const auto& itor = command_map.find (line);
+         const auto& itor = command_map.find(temp);
          cxi_command cmd = itor == command_map.end()
                          ? cxi_command::ERROR : itor->second;
          string filename = "";
          if(cmd == cxi_command::GET) {
            size_t ind = line.find(" ");
-           filename = line.substr(ind, line.length());
+           filename = line.substr(ind+1, line.length());
          }
          switch (cmd) {
             case cxi_command::EXIT:
