@@ -67,19 +67,32 @@ void cxi_get(client_socket& server,string filename) {
   send_packet(server, &header, sizeof header);
   recv_packet(server, &header, sizeof header);
   //Might not be ACK
-  if(header.command != cxi_command::ACK) {
-    outlog << "sent GET, server did not return ACK" << endl;
+  if(header.command != cxi_command::FILEOUT) {
+    outlog << "sent GET, server did not return FILEOUT" << endl;
     outlog << "server returned " << header << endl;
   } else {
     char *buffer = new char[header.nbytes+1];
     recv_packet (server, buffer, header.nbytes);
     buffer[header.nbytes] = '\0';
-
     ofstream ofs;
     ofs.open(header.filename, ofstream::out);
     ofs.write(buffer,header.nbytes);
     ofs.close();
     delete buffer;
+  }
+}
+
+void cxi_rm(client_socket& server, string filename) {
+  cxi_header header;
+  header.command = cxi_command::RM;
+  strcpy(header.filename, filename.c_str());
+  send_packet(server, &header, sizeof header);
+  recv_packet(server, &header, sizeof header);
+  if(header.command != cxi_command::ACK) {
+    outlog << "sent RM, server did not return ACK" << endl;
+    outlog << "server returned " << header << endl;
+  } else {
+    
   }
 }
 

@@ -61,12 +61,34 @@ void reply_get(accepted_socket& client_sock, cxi_header& header) {
   ostringstream ss;
   ss << ifs.rdbuf();
   string get_output = ss.str();
+ 
+  /*
+  string get_output;
+  int length = ifs.tellg();
+  char *buffer = new char[length];
+  ifs.read (buffer, length);
+  get_output.append(buffer);
+  */
 
-  header.command = cxi_command::ACK;
+  header.command = cxi_command::FILEOUT;
   header.nbytes = get_output.size();
   memset (header.filename, 0, FILENAME_SIZE);
   send_packet (client_sock, &header, sizeof header);
   send_packet (client_sock, get_output.c_str(), get_output.size());
+}
+
+void reply_rm(accepted_socket& client_sock, cxi_header& header) {
+  auto rc = unlink(header.filename);
+  if(rc != 0) {
+    outlog << " << ": " << strerror (errno) << endl;
+    header.command = cxi_command::NAK;
+    header.nbytes = htonl (errno);
+    send_packet (client_sock, &header, sizeof header);
+    return;
+  }
+  header.command = cxi_command::ACK;
+  header.nbytes = htonl (errno);
+  send_packet(client_sock, &header, sizeof header);
 }
 
 
