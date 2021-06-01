@@ -58,17 +58,14 @@ void reply_get(accepted_socket& client_sock, cxi_header& header) {
     return;
   }
 
-  ostringstream ss;
-  ss << ifs.rdbuf();
-  string get_output = ss.str();
- 
-  /*
   string get_output;
-  int length = ifs.tellg();
-  char *buffer = new char[length];
-  ifs.read (buffer, length);
-  get_output.append(buffer);
-  */
+  ifs.seekg(0,ifs.end);
+  int nbytes = ifs.tellg();
+  ifs.seekg(0,ifs.beg);
+  auto buffer = make_unique<char[]> (nbytes);
+  ifs.read (buffer.get(), nbytes);
+  get_output.append(buffer.get());
+  ifs.close();
 
   header.command = cxi_command::FILEOUT;
   header.nbytes = get_output.size();
@@ -78,16 +75,16 @@ void reply_get(accepted_socket& client_sock, cxi_header& header) {
 }
 
 void reply_rm(accepted_socket& client_sock, cxi_header& header) {
-  auto rc = unlink(header.filename);
+  int rc = unlink(header.filename);
   if(rc != 0) {
-    outlog << header << ": " << strerror (errno) << endl;
+    outlog << ": " << strerror (errno) << endl;
     header.command = cxi_command::NAK;
     header.nbytes = htonl (errno);
     send_packet (client_sock, &header, sizeof header);
     return;
   }
   header.command = cxi_command::ACK;
-  header.nbytes = htonl (errno);
+  header.nbytes = 0;
   send_packet(client_sock, &header, sizeof header);
 }
 
@@ -122,6 +119,9 @@ void run_server (accepted_socket& client_sock) {
             case cxi_command::GET:
                reply_get (client_sock, header);
                break;
+            case cxi_command::RM:
+              reply_rm (client_sock, header);
+              break;
             default:
                outlog << "invalid client header:" << header << endl;
                break;
