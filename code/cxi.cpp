@@ -72,14 +72,14 @@ void cxi_get(client_socket& server,string filename) {
     outlog << "sent GET, server did not return FILEOUT" << endl;
     outlog << "server returned " << header << endl;
   } else {
-    char *buffer = new char[header.nbytes+1];
-    recv_packet (server, buffer, header.nbytes);
+    size_t nbytes = ntohl(header.nbytes);
+    auto buffer = make_unique<char[]> (nbytes+1);
+    recv_packet (server, buffer.get(), header.nbytes);
     buffer[header.nbytes] = '\0';
     ofstream ofs;
     ofs.open(filename, ofstream::out);
-    ofs.write(buffer,header.nbytes);
+    ofs.write(buffer.get(),header.nbytes);
     ofs.close();
-    delete buffer;
   }
 }
 
