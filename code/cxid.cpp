@@ -80,7 +80,7 @@ void reply_get(accepted_socket& client_sock, cxi_header& header) {
 void reply_rm(accepted_socket& client_sock, cxi_header& header) {
   auto rc = unlink(header.filename);
   if(rc != 0) {
-    outlog << " << ": " << strerror (errno) << endl;
+    outlog << header << ": " << strerror (errno) << endl;
     header.command = cxi_command::NAK;
     header.nbytes = htonl (errno);
     send_packet (client_sock, &header, sizeof header);
@@ -91,6 +91,21 @@ void reply_rm(accepted_socket& client_sock, cxi_header& header) {
   send_packet(client_sock, &header, sizeof header);
 }
 
+void reply_put(accepted_socket& client_sock, cxi_header& header) {
+  auto buffer = make_unique<char[]>(header.nbytes + 1);
+  buffer[header.nbytes] = '\0';
+  cout << "got size" << endl;
+  size_t n_bytes = ntohl (header.nbytes);
+  recv_packet(client_sock, buffer.get(), n_bytes);
+  cout << "file contents: " << buffer.get() << endl;
+  ofstream ofs;
+  ofs.open(header.filename, ofstream::out);
+  ofs.write(buffer.get(), header.nbytes);
+  ofs.close();
+  header.command = cxi_command::ACK;
+  //send_packet(client_sock, &header, sizeof header);
+}
+  
 
 void run_server (accepted_socket& client_sock) {
    outlog.execname (outlog.execname() + "*");

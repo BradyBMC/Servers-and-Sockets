@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <fstream>
+#include <sstream>
 using namespace std;
 
 #include <libgen.h>
@@ -25,6 +26,7 @@ unordered_map<string,cxi_command> command_map {
    {"help", cxi_command::HELP},
    {"ls"  , cxi_command::LS  },
    {"get" , cxi_command::GET },
+   {"put" , cxi_command::PUT },
 };
 
 static const char help[] = R"||(
@@ -96,6 +98,41 @@ void cxi_rm(client_socket& server, string filename) {
   }
 }
 
+void cxi_put(client_socket& server, string filename) {
+  ifstream ifs;
+  ifs.open(filename, ifstream::in);
+  if (ifs.fail()) {
+    outlog << filename << ": " << strerror (errno) << endl;
+    return;
+  }
+
+  ostringstream ss;
+  ss << ifs.rdbuf();
+  string get_output = ss.str();
+
+  cout << " contents: " << get_output << endl;
+  cxi_header header;
+  header.command = cxi_command::PUT;
+  header.nbytes = get_output.size();
+  cout << "nbytes; " << header.nbytes << endl;
+  strncpy(header.filename, filename.c_str(), header.nbytes);
+  memset (header.filename, 0, FILENAME_SIZE);
+  send_packet(server, &header, sizeof filename);
+  cout << "sent file size" << endl;
+  size_t n_bytes = htonl(get_output.size());
+  send_packet(server, get_output.c_str(), n_bytes);
+  cout << "sent buffer" << endl;
+
+  /*
+  recv_packet(server, &header, sizeof header);
+  
+  if (header.command != cxi_command::ACK) {
+    outlog << "sent PUT, server did not return ACK" << endl;
+    outlog << "server returned " << header << endl;
+  }
+  */
+}
+
 
 void usage() {
    cerr << "Usage: " << outlog.execname() << " host port" << endl;
@@ -146,7 +183,8 @@ int main (int argc, char** argv) {
          cxi_command cmd = itor == command_map.end()
                          ? cxi_command::ERROR : itor->second;
          string filename = "";
-         if(cmd == cxi_command::GET) {
+         if(cmd == cxi_command::GET ||
+            cmd == cxi_command::PUT) {
            size_t ind = line.find(" ");
            filename = line.substr(ind+1, line.length());
          }
@@ -162,6 +200,10 @@ int main (int argc, char** argv) {
                break;
             case cxi_command::GET:
                cxi_get (server, filename);
+               break;
+            case cxi_command::PUT:
+               cout << filename << endl;
+               cxi_put (server, filename);
                break;
             default:
                outlog << line << ": invalid command" << endl;
