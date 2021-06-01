@@ -78,16 +78,17 @@ void reply_get(accepted_socket& client_sock, cxi_header& header) {
 }
 
 void reply_rm(accepted_socket& client_sock, cxi_header& header) {
-  auto rc = unlink(header.filename);
+  cout << "got here" << endl;
+  int rc = unlink(header.filename);
   if(rc != 0) {
-    outlog << " << ": " << strerror (errno) << endl;
+    outlog << ": " << strerror (errno) << endl;
     header.command = cxi_command::NAK;
     header.nbytes = htonl (errno);
     send_packet (client_sock, &header, sizeof header);
     return;
   }
   header.command = cxi_command::ACK;
-  header.nbytes = htonl (errno);
+  header.nbytes = 0;
   send_packet(client_sock, &header, sizeof header);
 }
 
@@ -107,6 +108,9 @@ void run_server (accepted_socket& client_sock) {
             case cxi_command::GET:
                reply_get (client_sock, header);
                break;
+            case cxi_command::RM:
+              reply_rm (client_sock, header);
+              break;
             default:
                outlog << "invalid client header:" << header << endl;
                break;

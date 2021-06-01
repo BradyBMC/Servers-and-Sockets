@@ -25,6 +25,7 @@ unordered_map<string,cxi_command> command_map {
    {"help", cxi_command::HELP},
    {"ls"  , cxi_command::LS  },
    {"get" , cxi_command::GET },
+   {"rm"  , cxi_command::RM  },
 };
 
 static const char help[] = R"||(
@@ -75,7 +76,7 @@ void cxi_get(client_socket& server,string filename) {
     recv_packet (server, buffer, header.nbytes);
     buffer[header.nbytes] = '\0';
     ofstream ofs;
-    ofs.open(header.filename, ofstream::out);
+    ofs.open(filename, ofstream::out);
     ofs.write(buffer,header.nbytes);
     ofs.close();
     delete buffer;
@@ -146,7 +147,7 @@ int main (int argc, char** argv) {
          cxi_command cmd = itor == command_map.end()
                          ? cxi_command::ERROR : itor->second;
          string filename = "";
-         if(cmd == cxi_command::GET) {
+         if(cmd == cxi_command::GET || cmd == cxi_command::RM) {
            size_t ind = line.find(" ");
            filename = line.substr(ind+1, line.length());
          }
@@ -163,6 +164,9 @@ int main (int argc, char** argv) {
             case cxi_command::GET:
                cxi_get (server, filename);
                break;
+            case cxi_command::RM:
+              cxi_rm (server, filename);
+              break;
             default:
                outlog << line << ": invalid command" << endl;
                break;
