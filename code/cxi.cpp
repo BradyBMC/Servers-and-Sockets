@@ -107,21 +107,25 @@ void cxi_put(client_socket& server, string filename) {
     return;
   }
 
-  ostringstream ss;
-  ss << ifs.rdbuf();
-  string get_output = ss.str();
+  string get_output;
+  ifs.seekg(0, ifs.end);
+  size_t nbytes = ifs.tellg();
+  ifs.seekg(0, ifs.beg);
+  auto buffer = make_unique<char[]>(nbytes);
+  ifs.read(buffer.get(), nbytes);
+  get_output.append(buffer.get());
+  ifs.close();
 
   cout << " contents: " << get_output << endl;
   cxi_header header;
   header.command = cxi_command::PUT;
-  header.nbytes = get_output.size();
+  header.nbytes = nbytes;
   cout << "nbytes; " << header.nbytes << endl;
-  strncpy(header.filename, filename.c_str(), header.nbytes);
+  strncpy(header.filename, filename.c_str(), sizeof filename);
   memset (header.filename, 0, FILENAME_SIZE);
-  send_packet(server, &header, sizeof filename);
+  send_packet(server, &header, sizeof header);
   cout << "sent file size" << endl;
-  size_t n_bytes = htonl(get_output.size());
-  send_packet(server, get_output.c_str(), n_bytes);
+  send_packet(server, get_output.c_str(), nbytes);
   cout << "sent buffer" << endl;
 
   /*

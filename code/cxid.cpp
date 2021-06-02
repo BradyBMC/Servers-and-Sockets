@@ -89,10 +89,11 @@ void reply_rm(accepted_socket& client_sock, cxi_header& header) {
 }
 
 void reply_put(accepted_socket& client_sock, cxi_header& header) {
-  auto buffer = make_unique<char[]>(header.nbytes + 1);
-  buffer[header.nbytes] = '\0';
-  cout << "got size" << endl;
+  cout << "put reply called" << endl;
   size_t n_bytes = ntohl (header.nbytes);
+  auto buffer = make_unique<char[]>(n_bytes + 1);
+  buffer[n_bytes] = '\0';
+  cout << "got size" << endl;
   recv_packet(client_sock, buffer.get(), n_bytes);
   cout << "file contents: " << buffer.get() << endl;
   ofstream ofs;
