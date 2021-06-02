@@ -100,6 +100,7 @@ void cxi_rm(client_socket& server, string filename) {
 }
 
 void cxi_put(client_socket& server, string filename) {
+  cxi_header header;
   ifstream ifs;
   ifs.open(filename, ifstream::in);
   if (ifs.fail()) {
@@ -116,26 +117,11 @@ void cxi_put(client_socket& server, string filename) {
   get_output.append(buffer.get());
   ifs.close();
 
-  cout << " contents: " << get_output << endl;
-  cxi_header header;
   header.command = cxi_command::PUT;
-  header.nbytes = nbytes;
-  cout << "nbytes; " << header.nbytes << endl;
-  strncpy(header.filename, filename.c_str(), sizeof filename);
-  memset (header.filename, 0, FILENAME_SIZE);
+  header.nbytes = htonl (nbytes);
+  strcpy(header.filename, filename.c_str());
   send_packet(server, &header, sizeof header);
-  cout << "sent file size" << endl;
   send_packet(server, get_output.c_str(), nbytes);
-  cout << "sent buffer" << endl;
-
-  /*
-  recv_packet(server, &header, sizeof header);
-  
-  if (header.command != cxi_command::ACK) {
-    outlog << "sent PUT, server did not return ACK" << endl;
-    outlog << "server returned " << header << endl;
-  }
-  */
 }
 
 

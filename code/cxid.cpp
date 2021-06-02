@@ -89,19 +89,14 @@ void reply_rm(accepted_socket& client_sock, cxi_header& header) {
 }
 
 void reply_put(accepted_socket& client_sock, cxi_header& header) {
-  cout << "put reply called" << endl;
-  size_t n_bytes = ntohl (header.nbytes);
+  size_t n_bytes = ntohl(header.nbytes);
   auto buffer = make_unique<char[]>(n_bytes + 1);
   buffer[n_bytes] = '\0';
-  cout << "got size" << endl;
   recv_packet(client_sock, buffer.get(), n_bytes);
-  cout << "file contents: " << buffer.get() << endl;
   ofstream ofs;
   ofs.open(header.filename, ofstream::out);
   ofs.write(buffer.get(), header.nbytes);
   ofs.close();
-  header.command = cxi_command::ACK;
-  //send_packet(client_sock, &header, sizeof header);
 }
   
 
@@ -122,6 +117,9 @@ void run_server (accepted_socket& client_sock) {
                break;
             case cxi_command::RM:
               reply_rm (client_sock, header);
+              break;
+            case cxi_command::PUT:
+              reply_put (client_sock, header);
               break;
             default:
                outlog << "invalid client header:" << header << endl;
