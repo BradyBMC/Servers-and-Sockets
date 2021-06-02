@@ -1,4 +1,5 @@
 // $Id: debug.h,v 1.1 2021-05-18 00:38:26-07 - - $
+// Evan Clark, Brady Chan
 
 #ifndef __DEBUG_H__
 #define __DEBUG_H__

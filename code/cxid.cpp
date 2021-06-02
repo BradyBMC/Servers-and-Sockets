@@ -1,4 +1,5 @@
 // $Id: cxid.cpp,v 1.8 2021-05-18 01:32:29-07 - - $
+// Evan Clark, Brady Chan
 
 #include <iostream>
 #include <string>
@@ -89,18 +90,21 @@ void reply_rm(accepted_socket& client_sock, cxi_header& header) {
 }
 
 void reply_put(accepted_socket& client_sock, cxi_header& header) {
-  cout << "put reply called" << endl;
   size_t n_bytes = ntohl(header.nbytes);
   auto buffer = make_unique<char[]>(n_bytes + 1);
   buffer[n_bytes] = '\0';
-  cout << "got size" << endl;
   recv_packet(client_sock, buffer.get(), n_bytes);
-  cout << "file contents: " << buffer.get() << endl;
   ofstream ofs;
   ofs.open(header.filename, ofstream::out);
+  if (ofs.fail()) {
+    header.command = cxi_command::NAK;
+    send_packet(client_sock, &header, sizeof header);
+    return;
+  }
   ofs.write(buffer.get(), n_bytes);
   ofs.close();
-  //send_packet(client_sock, &header, sizeof header);
+  header.command = cxi_command::ACK;
+  send_packet(client_sock, &header, sizeof header);
 }
   
 

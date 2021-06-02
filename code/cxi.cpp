@@ -1,4 +1,5 @@
 // $Id: cxi.cpp,v 1.5 2021-05-18 01:32:29-07 - - $
+// Evan Clark, Brady Chan
 
 #include <iostream>
 #include <memory>
@@ -7,6 +8,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <regex>
 using namespace std;
 
 #include <libgen.h>
@@ -95,11 +97,12 @@ void cxi_rm(client_socket& server, string filename) {
     outlog << "sent RM, server did not return ACK" << endl;
     outlog << "server returned " << header << endl;
   } else {
-    
+    outlog << "OK" << endl;
   }
 }
 
 void cxi_put(client_socket& server, string filename) {
+  cxi_header header;
   ifstream ifs;
   ifs.open(filename, ifstream::in);
   if (ifs.fail()) {
@@ -116,26 +119,19 @@ void cxi_put(client_socket& server, string filename) {
   get_output.append(buffer.get());
   ifs.close();
 
-  cout << " contents: " << get_output << endl;
-  cxi_header header;
   header.command = cxi_command::PUT;
-  header.nbytes = nbytes;
-  cout << "nbytes; " << header.nbytes << endl;
+  header.nbytes = htonl (nbytes);
   strcpy(header.filename, filename.c_str());
-  memset (header.filename, 0, FILENAME_SIZE);
   send_packet(server, &header, sizeof header);
-  cout << "sent file size" << endl;
-  send_packet(server, get_output.c_str(), header.nbytes);
-  cout << "sent buffer" << endl;
-
-  /*
+  send_packet(server, get_output.c_str(), nbytes);
   recv_packet(server, &header, sizeof header);
-  
+
   if (header.command != cxi_command::ACK) {
-    outlog << "sent PUT, server did not return ACK" << endl;
-    outlog << "server returned " << header << endl;
+    outlog << "server returned NAK" << endl;
+    return;
+  }else{
+    outlog << "OK" << endl;
   }
-  */
 }
 
 
@@ -160,6 +156,8 @@ pair<string,in_port_t> scan_options (int argc, char** argv) {
 }
 
 int main (int argc, char** argv) {
+   regex file_regex {R"(^[^\/]+$)"};
+   smatch result;
    outlog.execname (basename (argv[0]));
    outlog << to_string (hostinfo()) << endl;
    try {
@@ -193,6 +191,10 @@ int main (int argc, char** argv) {
             || cmd == cxi_command::PUT) {
            size_t ind = line.find(" ");
            filename = line.substr(ind+1, line.length());
+           if (!(regex_search(filename, result, file_regex))) {
+             outlog << "invalid file input" << endl;
+             continue;
+           }
          }
          switch (cmd) {
             case cxi_command::EXIT:
