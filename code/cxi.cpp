@@ -121,11 +121,11 @@ void cxi_put(client_socket& server, string filename) {
   header.command = cxi_command::PUT;
   header.nbytes = nbytes;
   cout << "nbytes; " << header.nbytes << endl;
-  strncpy(header.filename, filename.c_str(), sizeof filename);
+  strcpy(header.filename, filename.c_str());
   memset (header.filename, 0, FILENAME_SIZE);
   send_packet(server, &header, sizeof header);
   cout << "sent file size" << endl;
-  send_packet(server, get_output.c_str(), nbytes);
+  send_packet(server, get_output.c_str(), header.nbytes);
   cout << "sent buffer" << endl;
 
   /*
