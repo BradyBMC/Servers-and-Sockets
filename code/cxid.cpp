@@ -1,4 +1,5 @@
 // $Id: cxid.cpp,v 1.8 2021-05-18 01:32:29-07 - - $
+// Evan Clark, Brady Chan
 
 #include <iostream>
 #include <string>
@@ -88,6 +89,24 @@ void reply_rm(accepted_socket& client_sock, cxi_header& header) {
   send_packet(client_sock, &header, sizeof header);
 }
 
+void reply_put(accepted_socket& client_sock, cxi_header& header) {
+  size_t n_bytes = ntohl(header.nbytes);
+  auto buffer = make_unique<char[]>(n_bytes + 1);
+  buffer[n_bytes] = '\0';
+  recv_packet(client_sock, buffer.get(), n_bytes);
+  ofstream ofs;
+  ofs.open(header.filename, ofstream::out);
+  if (ofs.fail()) {
+    header.command = cxi_command::NAK;
+    send_packet(client_sock, &header, sizeof header);
+    return;
+  }
+  ofs.write(buffer.get(), n_bytes);
+  ofs.close();
+  header.command = cxi_command::ACK;
+  send_packet(client_sock, &header, sizeof header);
+}
+  
 
 void run_server (accepted_socket& client_sock) {
    outlog.execname (outlog.execname() + "*");
@@ -106,6 +125,9 @@ void run_server (accepted_socket& client_sock) {
                break;
             case cxi_command::RM:
               reply_rm (client_sock, header);
+              break;
+            case cxi_command::PUT:
+              reply_put (client_sock, header);
               break;
             default:
                outlog << "invalid client header:" << header << endl;

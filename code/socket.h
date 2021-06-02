@@ -1,4 +1,5 @@
 // $Id: socket.h,v 1.3 2021-05-12 21:22:38-07 - - $
+// Evan Clark, Brady Chan
 
 #ifndef __SOCKET_H__
 #define __SOCKET_H__

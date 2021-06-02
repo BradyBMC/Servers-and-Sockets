@@ -1,4 +1,5 @@
 // $Id: cxi.cpp,v 1.5 2021-05-18 01:32:29-07 - - $
+// Evan Clark, Brady Chan
 
 #include <iostream>
 #include <memory>
@@ -6,6 +7,8 @@
 #include <unordered_map>
 #include <vector>
 #include <fstream>
+#include <sstream>
+#include <regex>
 using namespace std;
 
 #include <libgen.h>
@@ -25,6 +28,7 @@ unordered_map<string,cxi_command> command_map {
    {"help", cxi_command::HELP},
    {"ls"  , cxi_command::LS  },
    {"get" , cxi_command::GET },
+   {"put" , cxi_command::PUT },
    {"rm"  , cxi_command::RM  },
 };
 
@@ -93,7 +97,40 @@ void cxi_rm(client_socket& server, string filename) {
     outlog << "sent RM, server did not return ACK" << endl;
     outlog << "server returned " << header << endl;
   } else {
-    
+    outlog << "OK" << endl;
+  }
+}
+
+void cxi_put(client_socket& server, string filename) {
+  cxi_header header;
+  ifstream ifs;
+  ifs.open(filename, ifstream::in);
+  if (ifs.fail()) {
+    outlog << filename << ": " << strerror (errno) << endl;
+    return;
+  }
+
+  string get_output;
+  ifs.seekg(0, ifs.end);
+  size_t nbytes = ifs.tellg();
+  ifs.seekg(0, ifs.beg);
+  auto buffer = make_unique<char[]>(nbytes);
+  ifs.read(buffer.get(), nbytes);
+  get_output.append(buffer.get());
+  ifs.close();
+
+  header.command = cxi_command::PUT;
+  header.nbytes = htonl (nbytes);
+  strcpy(header.filename, filename.c_str());
+  send_packet(server, &header, sizeof header);
+  send_packet(server, get_output.c_str(), nbytes);
+  recv_packet(server, &header, sizeof header);
+
+  if (header.command != cxi_command::ACK) {
+    outlog << "server returned NAK" << endl;
+    return;
+  }else{
+    outlog << "OK" << endl;
   }
 }
 
@@ -119,6 +156,8 @@ pair<string,in_port_t> scan_options (int argc, char** argv) {
 }
 
 int main (int argc, char** argv) {
+   regex file_regex {R"(^[^\/]+$)"};
+   smatch result;
    outlog.execname (basename (argv[0]));
    outlog << to_string (hostinfo()) << endl;
    try {
@@ -147,9 +186,15 @@ int main (int argc, char** argv) {
          cxi_command cmd = itor == command_map.end()
                          ? cxi_command::ERROR : itor->second;
          string filename = "";
-         if(cmd == cxi_command::GET || cmd == cxi_command::RM) {
+
+         if(cmd == cxi_command::GET || cmd == cxi_command::RM
+            || cmd == cxi_command::PUT) {
            size_t ind = line.find(" ");
            filename = line.substr(ind+1, line.length());
+           if (!(regex_search(filename, result, file_regex))) {
+             outlog << "invalid file input" << endl;
+             continue;
+           }
          }
          switch (cmd) {
             case cxi_command::EXIT:
@@ -163,6 +208,9 @@ int main (int argc, char** argv) {
                break;
             case cxi_command::GET:
                cxi_get (server, filename);
+               break;
+            case cxi_command::PUT:
+               cxi_put (server, filename);
                break;
             case cxi_command::RM:
               cxi_rm (server, filename);
